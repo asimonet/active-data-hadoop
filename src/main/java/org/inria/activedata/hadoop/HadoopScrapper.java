@@ -22,7 +22,7 @@ import org.inria.activedata.runtime.communication.rmi.RMIDriver;
  * Active Data life cycle transitions it detects from the logs.
  *
  */
-public class TaskTrackerScrapper extends Thread {
+public class HadoopScrapper extends Thread {
 	public static final String SUPPORTED_HADOOP_VERSION = "1.2.1";
 	private static final int AD_DEFAULT_PORT = 1200;
 
@@ -32,7 +32,7 @@ public class TaskTrackerScrapper extends Thread {
 
 	private ActiveDataClient adClient;
 
-	public TaskTrackerScrapper(String adHost, int adPort, String logPath) {
+	public HadoopScrapper(String adHost, int adPort, String logPath) {
 		this.adHost = adHost;
 		this.adPort = adPort;
 		this.logFile = new File(logPath);
@@ -67,15 +67,58 @@ public class TaskTrackerScrapper extends Thread {
 		}
 
 		// Connect to the Active Data Service
-		connectAdClient();
+		//connectAdClient();
 
 		// Start the loop
 		System.out.println("Starting to read");
+		HadoopLogParser parser = new HadoopLogParser();
+		HadoopLogParser.LogEntry entry = parser.new LogEntry();
+
 		while(!interrupted()) {
 			String line = null;
 			try {
 				while((line = reader.readLine()) != null) {
-					// TODO Do something with the string
+					entry = parser.parse(line, entry);
+					
+					switch(entry.entryType) {
+					case JOB_SUBMITTED:
+						System.out.println(String.format("Job %s submitted", entry.jobId));;
+						break;
+					case JOB_STARTED:
+						System.out.println(String.format("Job %s started", entry.jobId));;
+						break;
+					case MAP_SUBMITTED:
+						System.out.println(String.format("Map task %s for job %s submitted", entry.taskSubId, entry.jobId));;
+						break;
+					case MAP_RECEIVED:
+						System.out.println(String.format("Received new map task %s for job %s", entry.taskSubId, entry.jobId));;
+						break;
+					case MAP_STARTED:
+						System.out.println(String.format("Map task %s for job %s started", entry.taskSubId, entry.jobId));;
+						break;
+					case MAP_OUTPUT_SENT:
+						System.out.println(String.format("Sent map output from task %s for job %s", entry.taskSubId, entry.jobId));;
+						break;
+					case MAP_DONE:
+						System.out.println(String.format("Map task %s for job %s done", entry.taskSubId, entry.jobId));;
+						break;
+					case REDUCE_SUBMITTED:
+						System.out.println(String.format("Reduce task %s for job %s submitted", entry.taskSubId, entry.jobId));;
+						break;
+					case REDUCE_RECEIVED:
+						System.out.println(String.format("Received new reduce task %s for job %s", entry.taskSubId, entry.jobId));;
+						break;
+					case REDUCE_STARTED:
+						System.out.println(String.format("Reduce task %s for job %s started", entry.taskSubId, entry.jobId));;
+						break;
+					case REDUCE_DONE:
+						System.out.println(String.format("Reduce task %s for job %s done", entry.taskSubId, entry.jobId));;
+						break;
+
+					default:
+					case NONE:
+						break; // Just any other line
+					}
 				}
 			} catch (IOException e) {
 				System.err.println("Error: could not read file " + logFile.getAbsoluteFile());
@@ -110,7 +153,7 @@ public class TaskTrackerScrapper extends Thread {
 	}
 
 	private static void usage(String error, Options opt) {
-		String syntax = String.format("java %s [-hv] [-p <port>] <adhost> <logfile>", TaskTrackerScrapper.class.getName());
+		String syntax = String.format("java %s [-hv] [-p <port>] <adhost> <logfile>", HadoopScrapper.class.getName());
 		if(error == null)
 			error = "";
 		String header = "This program reads the given Hadoop TaskTracker log file and publishes the "
@@ -126,7 +169,7 @@ public class TaskTrackerScrapper extends Thread {
 	 * Print the program version and exits.
 	 */
 	private static void printVersion() {
-		String version = TaskTrackerScrapper.class.getPackage().getImplementationVersion();
+		String version = HadoopScrapper.class.getPackage().getImplementationVersion();
 		System.out.println(String.format("Hadoop TaskTrackerTracker %s for Hadoop %s.", version, SUPPORTED_HADOOP_VERSION));
 		System.exit(0);
 	}
@@ -179,7 +222,7 @@ public class TaskTrackerScrapper extends Thread {
 		}
 
 		// Start the scrapper
-		final TaskTrackerScrapper scrapper = new TaskTrackerScrapper(adHost, adPort, logPath);
+		final HadoopScrapper scrapper = new HadoopScrapper(adHost, adPort, logPath);
 		scrapper.start();
 
 		// Handle interruptions
