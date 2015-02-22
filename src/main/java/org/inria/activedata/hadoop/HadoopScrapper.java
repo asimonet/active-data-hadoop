@@ -33,6 +33,8 @@ import org.inria.activedata.runtime.communication.rmi.RMIDriver;
 public class HadoopScrapper extends Thread {
 	public static final String SUPPORTED_HADOOP_VERSION = "1.2.1";
 	private static final int AD_DEFAULT_PORT = 1200;
+	
+	private static final boolean DEBUG_ONLY = true;
 
 	private String adHost;
 	private int adPort;
@@ -96,7 +98,7 @@ public class HadoopScrapper extends Thread {
 		}
 
 		// Connect to the Active Data Service
-		//connectAdClient();
+		connectAdClient();
 
 		// Start the loop
 		System.out.println("Starting to read");
@@ -119,7 +121,7 @@ public class HadoopScrapper extends Thread {
 						publishTransitionForLifeCycles(startJob, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case JOB_DONE:
-						System.out.println(String.format("Job %s started", entry.jobId));;
+						System.out.println(String.format("Job %s done", entry.jobId));;
 						publishTransitionForLifeCycles(endJob, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case MAP_SUBMITTED:
@@ -178,6 +180,9 @@ public class HadoopScrapper extends Thread {
 	}
 	
 	private void publishTransitionForLifeCycles(Transition t, List<LifeCycle> lifeCycles) {
+		if(DEBUG_ONLY)
+			return;
+
 		for(LifeCycle lc: lifeCycles) {
 			try {
 				adClient.publishTransition(t, lc);
@@ -194,6 +199,9 @@ public class HadoopScrapper extends Thread {
 	 * The address and port to the service are given to the object constructor.
 	 */
 	private void connectAdClient() {
+		if(DEBUG_ONLY)
+			return;
+		
 		System.out.print("Connecting to the Active Data Service...");
 		try {
 			ActiveDataClientDriver driver = new RMIDriver(adHost, adPort);

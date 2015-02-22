@@ -23,12 +23,16 @@ public class HadoopLogParser {
 			IP_TEMPLATE);
 	private static final String TASK_RECEIVED_TEMPLATE = "LaunchTaskAction (registerTask): (\\w+) task's state:UNASSIGNED";
 	private static final String TASK_STARTED_TEMPLATE = "JVM with ID: (\\w+) given task: (\\w+)";
-	private static final String TASK_DONE_TEMPLATE = "Task (\\w+) is done.";
+	//private static final String TASK_DONE_TEMPLATE = "Task (\\w+) is done.";
+	private static final String TASK_DONE_TEMPLATE = "Removing task '(\\w+)'";
 	private static final String TRANSFER_DONE_TEMPLATE = String.format("clienttrace: src: (%s):(\\d+), dest: (%s):(\\d+), bytes: (\\d+), op: MAPRED_SHUFFLE, cliID: (\\w+), duration: (\\d+)",
 			IP_TEMPLATE,
 			IP_TEMPLATE);
 	
 	private static final String TASK_ID_TEMPLATE = "attempt_(\\d{12})_(\\d{4})_(m|r)_(\\d{6})_(\\d+)";
+	
+	
+	private static final String GET_JOB_STATUS_COMMAND = "/tmp/hadoop/bin/hadoop job -status job_(%s)";
 	
 	private String myIp;
 	private String myHost;
@@ -95,6 +99,8 @@ public class HadoopLogParser {
 		if(m.find()) {
 			output.jobId = m.group(1);
 			output.entryType = EntryType.JOB_DONE;
+			
+			return output;
 		}
 		
 		// Task submitted
