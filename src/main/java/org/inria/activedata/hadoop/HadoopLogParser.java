@@ -3,6 +3,11 @@ package org.inria.activedata.hadoop;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Parse a Hadoop TaskTracker or JobTracker log file and return events.
+ * 
+ * @author Anthony SIMONET <anthony.simonet@inria.fr>
+ */
 public class HadoopLogParser {
 	private static final String IP_TEMPLATE = "\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}";
 	private static final String HOSTNAME_TEMPLATE = "[\\w\\-\\.]+";
@@ -10,6 +15,7 @@ public class HadoopLogParser {
 	private static final String JOB_SUBMITTED_TEMPLATE = "Job job_(\\w+) added successfully for user '(\\w+)' to queue '(\\w+)'" ;
 	private static final String JOB_STARTED_TEMPLATE = String.format("IP=%s	OPERATION=SUBMIT_JOB	TARGET=job_(\\w+)	RESULT=SUCCESS",
 			IP_TEMPLATE);
+	private static final String JOB_ENDED_TEMPLATE = "Job job_(\\w+) has completed successfully";
 	private static final String STARTUP_IP_TEMPLATE = String.format("STARTUP_MSG:   host = (%s)/(%s)", HOSTNAME_TEMPLATE, IP_TEMPLATE);
 	private static final String TASK_SUBMITTED_TEMPLATE = String.format("Adding task \\((MAP|REDUCE)\\) 'attempt_(\\w+)' to tip task_(\\w+), for tracker '([%s]):([%s])/(%s):55578'",
 			HOSTNAME_TEMPLATE,
@@ -30,6 +36,7 @@ public class HadoopLogParser {
 	private Pattern startupIpPattern;
 	private Pattern jobSubmittedPattern;
 	private Pattern jobStartedPattern;
+	private Pattern jobEndedPattern;
 	private Pattern taskSubmittedPattern;
 	private Pattern taskReceivedPattern;
 	private Pattern taskStartedPattern;
@@ -41,6 +48,7 @@ public class HadoopLogParser {
 		startupIpPattern = Pattern.compile(STARTUP_IP_TEMPLATE);
 		jobSubmittedPattern = Pattern.compile(JOB_SUBMITTED_TEMPLATE);
 		jobStartedPattern = Pattern.compile(JOB_STARTED_TEMPLATE);
+		jobEndedPattern = Pattern.compile(JOB_ENDED_TEMPLATE);
 		taskSubmittedPattern = Pattern.compile(TASK_SUBMITTED_TEMPLATE);
 		taskReceivedPattern = Pattern.compile(TASK_RECEIVED_TEMPLATE);
 		taskStartedPattern = Pattern.compile(TASK_STARTED_TEMPLATE);
@@ -80,6 +88,13 @@ public class HadoopLogParser {
 			output.entryType = EntryType.JOB_STARTED;
 			
 			return output;
+		}
+		
+		// Job ended
+		m = jobEndedPattern.matcher(line);
+		if(m.find()) {
+			output.jobId = m.group(1);
+			output.entryType = EntryType.JOB_DONE;
 		}
 		
 		// Task submitted
@@ -190,6 +205,7 @@ public class HadoopLogParser {
 	enum EntryType {
 		JOB_SUBMITTED,
 		JOB_STARTED,
+		JOB_DONE,
 		MAP_SUBMITTED,
 		MAP_RECEIVED,
 		MAP_STARTED,

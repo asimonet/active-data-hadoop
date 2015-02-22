@@ -5,6 +5,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -13,6 +16,10 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.inria.activedata.model.InvalidTransitionException;
+import org.inria.activedata.model.LifeCycle;
+import org.inria.activedata.model.Transition;
+import org.inria.activedata.model.TransitionNotEnabledException;
 import org.inria.activedata.runtime.client.ActiveDataClient;
 import org.inria.activedata.runtime.client.ActiveDataClientDriver;
 import org.inria.activedata.runtime.communication.rmi.RMIDriver;
@@ -21,6 +28,7 @@ import org.inria.activedata.runtime.communication.rmi.RMIDriver;
  * This program reads logs from a Hadoop TaskTracker and publishes the
  * Active Data life cycle transitions it detects from the logs.
  *
+ * @author Anthony SIMONET <anthony.simonet@inria.fr>
  */
 public class HadoopScrapper extends Thread {
 	public static final String SUPPORTED_HADOOP_VERSION = "1.2.1";
@@ -30,12 +38,33 @@ public class HadoopScrapper extends Thread {
 	private int adPort;
 	private File logFile;
 
+	// We store the transitions we need here to avoid unnecessary lookups
 	private ActiveDataClient adClient;
+	private Transition submitJob;
+	private Transition startJob;
+	private Transition endJob;
+	private Transition submitMap;
+	private Transition assignMap;
+	private Transition startMap;
+	private Transition endMap;
+	private Transition submitReduce;
+	private Transition assignReduce;
+	private Transition startReduce;
+	private Transition endReduce;
+	private Transition shuffle;
+	
+	/**
+	 * Store the correspondance between a job id and the job input files (actually
+	 * the life cycle of each input file).
+	 */
+	private Map<String, List<LifeCycle>> jobId2LifeCycles;
 
 	public HadoopScrapper(String adHost, int adPort, String logPath) {
 		this.adHost = adHost;
 		this.adPort = adPort;
 		this.logFile = new File(logPath);
+		
+		jobId2LifeCycles = new HashMap<String, List<LifeCycle>>();
 	}
 
 	@Override
@@ -83,36 +112,51 @@ public class HadoopScrapper extends Thread {
 					switch(entry.entryType) {
 					case JOB_SUBMITTED:
 						System.out.println(String.format("Job %s submitted", entry.jobId));;
+						publishTransitionForLifeCycles(submitJob, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case JOB_STARTED:
 						System.out.println(String.format("Job %s started", entry.jobId));;
+						publishTransitionForLifeCycles(startJob, jobId2LifeCycles.get(entry.jobId));
+						break;
+					case JOB_DONE:
+						System.out.println(String.format("Job %s started", entry.jobId));;
+						publishTransitionForLifeCycles(endJob, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case MAP_SUBMITTED:
 						System.out.println(String.format("Map task %s for job %s submitted", entry.taskSubId, entry.jobId));;
+						publishTransitionForLifeCycles(submitMap, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case MAP_RECEIVED:
 						System.out.println(String.format("Received new map task %s for job %s", entry.taskSubId, entry.jobId));;
+						publishTransitionForLifeCycles(assignMap, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case MAP_STARTED:
 						System.out.println(String.format("Map task %s for job %s started", entry.taskSubId, entry.jobId));;
+						publishTransitionForLifeCycles(startMap, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case MAP_OUTPUT_SENT:
 						System.out.println(String.format("Sent map output from task %s for job %s", entry.taskSubId, entry.jobId));;
+						publishTransitionForLifeCycles(shuffle, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case MAP_DONE:
 						System.out.println(String.format("Map task %s for job %s done", entry.taskSubId, entry.jobId));;
+						publishTransitionForLifeCycles(endMap, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case REDUCE_SUBMITTED:
 						System.out.println(String.format("Reduce task %s for job %s submitted", entry.taskSubId, entry.jobId));;
+						publishTransitionForLifeCycles(submitReduce, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case REDUCE_RECEIVED:
 						System.out.println(String.format("Received new reduce task %s for job %s", entry.taskSubId, entry.jobId));;
+						publishTransitionForLifeCycles(assignReduce, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case REDUCE_STARTED:
 						System.out.println(String.format("Reduce task %s for job %s started", entry.taskSubId, entry.jobId));;
+						publishTransitionForLifeCycles(startReduce, jobId2LifeCycles.get(entry.jobId));
 						break;
 					case REDUCE_DONE:
 						System.out.println(String.format("Reduce task %s for job %s done", entry.taskSubId, entry.jobId));;
+						publishTransitionForLifeCycles(endReduce, jobId2LifeCycles.get(entry.jobId));
 						break;
 
 					default:
@@ -130,6 +174,18 @@ public class HadoopScrapper extends Thread {
 			reader.close();
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+	}
+	
+	private void publishTransitionForLifeCycles(Transition t, List<LifeCycle> lifeCycles) {
+		for(LifeCycle lc: lifeCycles) {
+			try {
+				adClient.publishTransition(t, lc);
+			} catch (TransitionNotEnabledException tne) {
+				System.err.println(tne.getMessage());
+			} catch (InvalidTransitionException ite) {
+				System.err.println(ite.getMessage());
+			}
 		}
 	}
 
