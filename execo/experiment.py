@@ -6,227 +6,260 @@ import pprint, os, sys, math
 pp = pprint.PrettyPrinter(indent=4).pprint
 
 import execo as EX
+from string import Template
+from execo import configuration
+from execo.log import style
 from execo.process import ProcessOutputHandler
 import execo_g5k as EX5
 from execo_g5k.api_utils import get_cluster_site
 from execo_engine import Engine, ParamSweeper, logger, sweep, sweep_stats, slugify
-EX.logger.setLevel(logging.ERROR)
-logger.setLevel(logging.ERROR)
+from hadoop_g5k import HadoopCluster, HadoopJarJob
+#EX.logger.setLevel(logging.ERROR)
+#logger.setLevel(logging.ERROR)
 
 # Shortcut
 funk = EX5.planning
 
-NORMAL			= "\x1B[0m"
-GREEN			= "\x1B[32m"
-BOLD_MAGENTA	= "\x1B[35;1m"
-RED				= "\x1B[31m"
+job_name = 'ActiveDataHadoop'
+job_path = "/root/hduser/terasort-"
 
-OUT_FILE_FORMAT = 'events_per_sec_{0}W_{1}T'
+default_ad_cluster = 'parapide'
+default_work_cluster = 'paranoia'
+default_n_nodes = 5
+default_walltime = "3:00:00"
+
+
+#OUT_FILE_FORMAT = Template('events_per_sec_$W_{1}T'
 
 JAR_NAME = 'active-data-lib-0.2.0.jar'
-
 WALLTIME = 45 * 60
 
-# Setup signal handler
-def sighandler(signal, frame):
-	if ad_hadoop._job is not None:
-		ad_hadoop._log("\nInterrupted: killing oar job " + BOLD_MAGENTA + \
-							str(ad_hadoop._job[0][0]) + NORMAL + "\n")
-		EX5.oar.oardel(ad_hadoop._job)
-	else:
-		ad_hadoop._log("\nInterrupted: no job to kill")
-	sys.exit(0)
-
-signal.signal(signal.SIGINT, sighandler)
-signal.signal(signal.SIGQUIT, sighandler)
-signal.signal(signal.SIGTERM, sighandler)
 
 class ad_hadoop(Engine):
-	_stat = ""
-	_job = None
-	
-	def __init__(self):
-		super(ad_hadoop, self).__init__()
-	
-	def run(self):
-		cluster = 'parapide'
-		server_out_path = os.path.join(self.result_dir, "server.out")
-		listener_out_path = os.path.join(self.result_dir, "listener.out")
-		
-		# Find a slot available for the experiment
-		n_nodes = int(math.ceil(float(comb['n_clients']) / EX5.get_host_attributes(cluster + '-1')['architecture']['smt_size'])) + 1
 
-		planning = funk.get_planning([cluster], out_of_chart = (n_nodes > 20))
-			
-		slots = funk.compute_slots(planning, WALLTIME)
-		if slots is None:
-			self._log("Could not find a slot for {0} nodes on {1}".format(n_nodes, cluster))
-			sweeper.skip(comb)
-			continue
-		
-		resources_wanted = {}
-		resources_wanted[cluster] = n_nodes
-		
-		startdate, enddate, resources = funk.find_first_slot(slots, resources_wanted)
-		
-		self._log("Found a slot from {0} to {1}".format(timestamp2str(startdate), timestamp2str(enddate)))
-		
-		resources = funk.distribute_hosts(resources, resources_wanted)
-		job_specs = funk.get_jobs_specs(resources)
-		job_specs[0][0].job_type = 'allow_classic_ssh'
-		job_specs[0][0].additional_options = '-t deploy'
-			
-		# Performing the submission on G5K
-		site = get_cluster_site(cluster)
-		self._log("Output will go to " + self.result_dir)
-		
-		self._log("Reserving {0} nodes on {1}".format(n_nodes, site))
-		
-		job = EX5.oarsub(job_specs)
-		
-		self.__class__._job = job
-		
-		# Sometimes oarsub fails silently
-		if job[0][0] is None:
-			print("\nError: no job was created")
-			sweeper.skip(comb)
-			continue
-			
-		# Wait for the job to start
-		self._log("Waiting for job {0} to start...\n".format(BOLD_MAGENTA + str(job[0][0]) + NORMAL))
-		EX5.wait_oar_job_start(job[0][0], job[0][1], prediction_callback = prediction)
-		nodes = EX5.get_oar_job_nodes(job[0][0], job[0][1])
-		
-		# Deploying nodes
-		deployment = EX5.Deployment(hosts = nodes, env_name='wheezy-x64-prod')
-		run_deploy = EX5.deploy(deployment)
-		nodes_deployed = run_deploy.hosts[0]
-		
-		# Copying active_data program on all deployed hosts
-		EX.Put(nodes, 'active-data-lib-0.1.2.jar', connexion_params = {'user': 'root'}).run()
-		EX.Put(nodes, 'server.policy', connexion_params = {'user': 'root'}).run()
-			
-		# Split the nodes
-		ADservice = nodes[0] 
-		clients = nodes[1:]
-		
-		self._log("Running experiment with {0} Hadoop Workers and {1}".format(len(clients), sizeof_fmt(input_size)))
-		
-		# Launching Server on one node
-		out_handler = FileOutputHandler(server_out_path)
-		cmd = "java -Djava.security.policy=server.policy -jar {1}".format(JAR_NAME)
-		self._log("Running command " + cmd)
-		launch_server = EX.Remote(cmd , [ADservice])
-		launch_server.processes[0].stdout_handlers.append(out_handler)
-		launch_server.processes[0].stderr_handlers.append(out_handler)
-		launch_server.start()
-		self._log("Active Data Service started on " + ADservice.address)
-		time.sleep(2)
-		
-		if not launch_server.processes[0].running:
-			self._log("Active Data Service crashed\n")
-			process = launch_server.processes[0]
-			if process.stdout is not None: print(GREEN + process.stdout + NORMAL)
-			if process.stderr is not None: print(RED + process.stderr + NORMAL)
-		
-		# Creating the Hadoop cluster
-		
-		
-		
-		# Launching a scrapper per Hadoop TaskTracker, plus a scrapper for the JobTracker
-		rank=0
-		n_cores = EX5.get_host_attributes(clients[0])['architecture']['smt_size'];
-		cores = nodes * n_cores
-		cores = cores[0:comb['n_clients']] # Cut out the additional cores
-		
-		self._log("Launching {0} clients...".format(len(cores)))
-		
-		# Start the clients
-		client_cmd = "java -Djava.security.policy=" + policy_path + " -cp " + jar_path + " org.inria.activedata.examples.perf.TransitionsPerSecond " + \
-						"{0} {1} {2} {3} {4}".format(server.address, 1200, "{{range(len(cores))}}", len(cores), comb['n_transitions'])
-		client_out_handler = FileOutputHandler(os.path.join(self.result_dir, "clients.out"))
-		client_request = EX.TaktukRemote(client_cmd, cores)
-			
-		for process in client_request.processes:
-			process.stdout_handlers.append(client_out_handler)
-			process.stderr_handlers.append(client_out_handler)
-		
-		client_request.run()
-		
-		if not client_request.ok:
-			# Some client failed, please panic
-			self._log("One or more client process failed. Enjoy reading their outputs.")
-			self._log("OUTPUT STARTS -------------------------------------------------\n")
-			for process in client_request.processes:
-				print("----- {0} exited with code: {1}".format(process.host.address, process.exit_code))
-				if process.stdout is not None: print(GREEN + process.stdout + NORMAL)
-				if process.stderr is not None: print(RED + process.stderr + NORMAL)
-			self._log("OUTPUT ENDS ---------------------------------------------------\n")
-			sweeper.skip(comb)
-			launch_server.kill()
-			launch_server.wait()
-		else:
-			# Waiting for server to end
-			if not launch_server.processes[0].running and not launch_server.ok:
-				self._log("Server crashed\n")
-				process = launch_server.processes[0]
-				if process.stdout is not None: print(GREEN + process.stdout + NORMAL)
-				if process.stderr is not None: print(RED + process.stderr + NORMAL)
-			launch_server.wait()
-			
-			# Getting log files
-			#distant_path = OUT_FILE_FORMAT.format(len(cores), comb['n_transitions'])
-			#local_path = distant_path
-			
-			#EX.Get([server], distant_path).run()
-			
-			#EX.Local('mv ' + distant_path + ' ' + os.path.join(self.result_dir, local_path)).run()
-			
-			#EX.Get([server], 'client_*.out', local_location = self.result_dir)
-			#EX.Remote('rm -f client_*.out', [server])
-			
-			self._log("Finishing experiment with {0} clients and {1} transitions per client".format(comb['n_clients'], comb['n_transitions']))
-			
-			sweeper.done(comb)
-			
-		sub_comb = sweeper.get_next (filtr = lambda r: filter(lambda s: s["n_clients"] == comb['n_clients'], r))
-		self._updateStat(sweeper.stats())
-				
+    def __init__(self):
+        """Define options for the experiment"""
+        super(ad_hadoop, self).__init__()
+        self.options_parser.add_option("-k", dest="keep_alive",
+                                        help="keep reservation alive ..",
+                                        action="store_true")
+        self.options_parser.add_option("-j", dest="job_id",
+                                        help="job_id to relaunch an engine",
+                                        type=int)
+        self.options_parser.add_option("--ad-cluster",
+                                       default=default_ad_cluster,
+                                       help="The cluster on which to run ActiveData")
+        self.options_parser.add_option("--work-cluster",
+                                       default=default_work_cluster,
+                                       help="The cluster on which to run Hadoop")
+        self.options_parser.add_option("--n-nodes",
+                                       default=default_n_nodes,
+                                       help="The number of nodes to be used")
+        self.options_parser.add_option("--n-reducer",
+                                       default=default_n_nodes,
+                                       help="The number of nodes to be used "
+                                       "for reduce phase")
+        self.options_parser.add_option("--walltime",
+                                       default=default_walltime,
+                                       help="The duration of the experiment")
+        self.options_parser.add_option("--size",
+                                       default=10,
+                                       help="Dataset size (in Gb)")
+
+    def run(self):
+        """Perform experiment"""
+        logger.detail(self.options)
+        try:
+            # Retriveing hosts for the experiment
+            hosts = self.get_hosts()
+            # Deploying OS and copying required file
+            AD_node, hadoop_cluster = self.setup_hosts(hosts)
+            #
+            server = self._start_active_data_server(AD_node)
+            clients = self._start_active_data_clients(AD_node, hadoop_cluster)
+            listener = self._start_active_data_listener(AD_node)
+            data_size = self.options.size * 10 ** 9
+            generate = HadoopJarJob('hadoop-examples-1.2.1.jar',
+                               "teragen %s %sinput" % (data_size, job_path))
+            hadoop_cluster.execute_jar(generate)
+            sort = HadoopJarJob('hadoop-examples-1.2.1.jar',
+                               "terasort -Dmapred.reduce.tasks=%s %sinput "
+                               "%soutput" % (self.options.n_reducer, job_path,
+                                             job_path))
+            hadoop_cluster.execute_jar(sort)
+
+        finally:
+            if not self.options.keep_alive:
+                EX5.oardel([(self.job_id, self.site)])
+        exit()
+
+    def _start_active_data_clients(self, server, hadoop_cluster, port=1200,
+                                   hdf_path='/root/hduser/terasort-input'):
+        """Return a started client action"""
+        cmd = "java -cp active-data-lib-0.2.0.jar:active-data-hadoop-0.1-SNAPSHOT.jar " + \
+            "org.inria.activedata.hadoop.HadoopScrapper " +\
+            server + "/tmp/hadoop/logs/hadoop-root-tasktracker-{{{host}}}.log"
+        tasktracker = EX.Remote(cmd, hadoop_cluster.hosts)
+        cmd = "java -cp active-data-lib-0.2.0.jar:active-data-hadoop-0.1-SNAPSHOT.jar " + \
+            "org.inria.activedata.hadoop.HadoopScrapper " +\
+            server + "/tmp/hadoop/logs/hadoop-root-jobtracker-{{{host}}}.log"
+        jobtracker = EX.Remote(cmd, [hadoop_cluster.master])
+
+        clients = EX.ParallelActions([tasktracker, jobtracker])
+        clients.start()
+
+        return clients
+
+    def _start_active_data_listener(self, ad_server, port=1200,
+                                   hdf_path='/root/hduser/terasort-input'):
+        """Return a started listener process"""
+        cmd = "java -jar %s org.inria.activedata.hadoop.HadoopListener %s %s %s" \
+                % (JAR_NAME, ad_server, port, hdf_path)
+        out_path = os.path.join(self.result_dir, "listener.out")
+        listener = EX.SshProcess(cmd, ad_server)
+        listener.stdout_handlers.append(out_path)
+        listener.stderr_handlers.append(out_path)
+        listener.start()
+        return listener
+
+    def _start_active_data_server(self, ad_server):
+        """Return a started server process"""
+        out_path = os.path.join(self.result_dir, "server.out")
+        cmd = "java -Djava.security.policy=server.policy -jar %s" % JAR_NAME
+        logger.info("Running command " + cmd)
+        server = EX.SshProcess(cmd, ad_server)
+        server.stdout_handlers.append(out_path)
+        server.stderr_handlers.append(out_path)
+        server.start()
+        logger.info("Active Data Service started on " + server.host.address)
+        time.sleep(2)
+
+        if not server.running:
+            logger.error("Active Data Service crashed\n %s \n%s",
+                        server.stdout, server.stderr)
+            return False
+
+        return server
+
+    def setup_hosts(self, hosts):
+        """Deploy operating setup active data on the service node and
+        Hadoop on all """
+        logger.info('Deploying hosts')
+        deployed_hosts, _ = EX5.deploy(EX5.Deployment(hosts=hosts,
+                                          env_name="wheezy-x64-prod"))
+        # Common operations
+        EX.Put(hosts, [JAR_NAME, 'active-data-hadoop-0.1-SNAPSHOT.jar']).run()
+
+        # Active Data server
+        AD_node = filter(lambda x: self.options.ad_cluster in x, deployed_hosts)[0]
+        EX.Put([AD_node], ['server.policy']).run()
+
+        # Hadoop Cluster
+        deployed_hosts.remove(AD_node)
+        workers = [EX.Host(host) for host in list(deployed_hosts)]
+        EX.Put(workers, ['~/.ssh/']).run()
+
+        logger.info('Creating Hadoop cluster on %s',
+                    ' '.join([style.host(host.address) for host in workers]))
+        cluster = HadoopCluster(workers)
+        cluster.bootstrap('hadoop-1.2.1.tar.gz')
+        cluster.initialize()
+        cluster.start()
+
+        return AD_node, cluster
+
+    def get_hosts(self):
+        """ """
+        logger.info('Retrieving hosts list')
+        self.site = get_cluster_site(self.options.ad_cluster)
+        self.job_id = self.options.job_id if self.options.job_id\
+            else self._make_reservation(self.site)
+        EX5.wait_oar_job_start(self.job_id, self.site)
+        return EX5.get_oar_job_nodes(self.job_id, self.site)
+
+    def _make_reservation(self, site):
+        """ """
+        elements = {self.options.ad_cluster: 1,
+                    self.options.work_cluster: self.options.n_nodes}
+        logger.info('Finding slot for the experiment '
+                    '\nActiveData %s:1\nHadoop %s:%s',
+                    style.host(self.options.ad_cluster).rjust(5),
+                    style.emph(self.options.work_cluster).rjust(5),
+                    style.emph(self.options.n_nodes))
+        planning = funk.get_planning(elements)
+        slots = funk.compute_slots(planning, walltime=self.options.walltime)
+        slot = funk.find_free_slot(slots, elements)
+        startdate = slot[0]
+        resources = funk.distribute_hosts(slot[2], elements)
+        jobs_specs = funk.get_jobs_specs(resources, name=job_name)
+        sub, site = jobs_specs[0]
+        sub.additional_options = "-t deploy"
+        sub.reservation_date = startdate
+        jobs = EX5.oarsub([(sub, site)])
+        job_id = jobs[0][0]
+        logger.info('Job %s will start at %s', style.emph(job_id),
+                style.log_header(EX.time_utils.format_date(startdate)))
+        return job_id
+
+
+
+#            
+#            # Getting log files
+#            #distant_path = OUT_FILE_FORMAT.format(len(cores), comb['n_transitions'])
+#            #local_path = distant_path
+#            
+#            #EX.Get([server], distant_path).run()
+#            
+#            #EX.Local('mv ' + distant_path + ' ' + os.path.join(self.result_dir, local_path)).run()
+#            
+#            #EX.Get([server], 'client_*.out', local_location = self.result_dir)
+#            #EX.Remote('rm -f client_*.out', [server])
+#
+#            self._log("Finishing experiment with {0} clients and {1} transitions per client".format(comb['n_clients'], comb['n_transitions']))
+#
+#            sweeper.done(comb)
+#
+#        sub_comb = sweeper.get_next(filtr=lambda r: filter(lambda s: s["n_clients"] == comb['n_clients'], r))
+#        self._updateStat(sweeper.stats())
+
+
 def sizeof_fmt(num, suffix='B'):
-	for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
-		if abs(num) < 1024.0:
-			return "%3.1f%s%s" % (num, unit, suffix)
-		num /= 1024.0
-	return "%.1f%s%s" % (num, 'Yi', suffix)
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
+
 
 def timestamp2str(timestamp):
-	return datetime.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+
 
 def prediction(timestamp):
-	start = timestamp2str(timestamp)
-	ad_hadoop._log("Waiting for job to start (prediction: {0})".format(start), False)
+    start = timestamp2str(timestamp)
+    ad_hadoop._log("Waiting for job to start (prediction: {0})".format(start), False)
+
 
 class FileOutputHandler(ProcessOutputHandler):
-	__file = None
-	
-	def __init__(self, path):
-		super(ProcessOutputHandler, self).__init__()
-		self.__file = open(path, 'a')
-	
-	def __del__(self):
-		self.__file.flush()
-		self.__file.close()
-	
-	def read(self, process, string, eof=False, error=False):
-		self.__file.write(string)
-		self.__file.flush()
-	
-	def read_line(self, process, string, eof=False, error=False):
-		self.__file.write(time.localtime().strftime("[%d-%m-%y %H:%M:%S"))
-		self.__file.write(' ')
-		self.__file.write(string)
-		self.__file.flush()
+    __file = None
 
+    def __init__(self, path):
+        super(ProcessOutputHandler, self).__init__()
+        self.__file = open(path, 'a')
+
+    def __del__(self):
+        self.__file.flush()
+        self.__file.close()
+
+    def read(self, process, string, eof=False, error=False):
+        self.__file.write(string)
+        self.__file.flush()
+
+    def read_line(self, process, string, eof=False, error=False):
+        self.__file.write(time.localtime().strftime("[%d-%m-%y %H:%M:%S"))
+        self.__file.write(' ')
+        self.__file.write(string)
+        self.__file.flush()
 
 
 ###################
@@ -234,12 +267,5 @@ class FileOutputHandler(ProcessOutputHandler):
 ###################
 if __name__ == "__main__":
     engine = ad_hadoop()
-    try:
-    	engine.start()
-    except Exception as e:
-    	engine._log(traceback.format_exc())
-
-    	job = engine.__class__._job
-    	if job is not None:
-    		EX5.oar.oardel(job)
-    		engine._log("Deleted job " + BOLD_MAGENTA + str(job[0][0]) + NORMAL + "\n")
+    engine.start()
+   
