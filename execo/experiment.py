@@ -17,23 +17,23 @@ from hadoop_g5k import HadoopCluster, HadoopJarJob
 #EX.logger.setLevel(logging.ERROR)
 #logger.setLevel(logging.ERROR)
 
+#EXCLUDED_ELEMENTS = ['paranoia-4', 'paranoia-7', 'paranoia-8']
+EXCLUDED_ELEMENTS = []
+
 # Shortcut
 funk = EX5.planning
 
 job_name = 'ActiveDataHadoop'
 job_path = "/root/hduser/terasort-"
 
-default_ad_cluster = 'parapide'
-default_work_cluster = 'paranoia'
-default_n_nodes = 5
-default_walltime = "3:00:00"
+default_ad_cluster        = 'parapide'
+default_work_cluster    = 'paranoia'
+default_n_nodes            = 5
+default_walltime        = "3:00:00"
 
-
-#OUT_FILE_FORMAT = Template('events_per_sec_$W_{1}T'
-
-JAR_NAME = 'active-data-lib-0.2.0.jar'
-WALLTIME = 45 * 60
-
+XP_BASEDIR = '/home/ansimonet/active_data_hadoop'
+AD_JAR_NAME = 'active-data-lib-0.2.0.jar'
+HADOOP_LOG_PATH = '/tmp/hadoop/logs/'
 
 class ad_hadoop(Engine):
 
@@ -41,52 +41,86 @@ class ad_hadoop(Engine):
         """Define options for the experiment"""
         super(ad_hadoop, self).__init__()
         self.options_parser.add_option("-k", dest="keep_alive",
-                                        help="keep reservation alive ..",
+                                        help="Keep the reservation alive.",
                                         action="store_true")
         self.options_parser.add_option("-j", dest="job_id",
-                                        help="job_id to relaunch an engine",
+                                        help="job_id to relaunch an engine.",
                                         type=int)
         self.options_parser.add_option("--ad-cluster",
                                        default=default_ad_cluster,
-                                       help="The cluster on which to run ActiveData")
+                                       help="The cluster on which to run ActiveData.")
         self.options_parser.add_option("--work-cluster",
                                        default=default_work_cluster,
-                                       help="The cluster on which to run Hadoop")
+                                       help="The cluster on which to run Hadoop.")
         self.options_parser.add_option("--n-nodes",
                                        default=default_n_nodes,
-                                       help="The number of nodes to be used")
-        self.options_parser.add_option("--n-reducer",
-                                       default=default_n_nodes,
-                                       help="The number of nodes to be used "
-                                       "for reduce phase")
+                                       help="The number of nodes to use.")
+        self.options_parser.add_option("--n-reducers",
+                                       help="The number of reducers to use.")
         self.options_parser.add_option("--walltime",
                                        default=default_walltime,
-                                       help="The duration of the experiment")
-        self.options_parser.add_option("--size",
-                                       default=10,
-                                       help="Dataset size (in Gb)")
+                                       help="The duration of the experiment.")
+        self.options_parser.add_option("--size", type=int,
+                                       help="Dataset size (in GB)")
 
     def run(self):
         """Perform experiment"""
         logger.detail(self.options)
         try:
-            # Retriveing hosts for the experiment
+            # Checking the options
+            if self.options.n_reducers is None or self.options.size is None:
+                logger.error("Both --n-reducer and --size are mandatory.")
+                exit(1)
+            
+            # Retrieving the hosts for the experiment
             hosts = self.get_hosts()
             # Deploying OS and copying required file
             AD_node, hadoop_cluster = self.setup_hosts(hosts)
-            #
+            
+            # Starting the processes
             server = self._start_active_data_server(AD_node)
             clients = self._start_active_data_clients(AD_node, hadoop_cluster)
             listener = self._start_active_data_listener(AD_node)
-            data_size = self.options.size * 10 ** 9
-            generate = HadoopJarJob('hadoop-examples-1.2.1.jar',
+            data_size = self.options.size * 1024 ** 3
+            
+            # First Hadoop job to generate the dataset
+            hadoop_stdout_path = os.path.join(self.result_dir, "hadoop.stdout")
+            hadoop_stderr_path = os.path.join(self.result_dir, "hadoop.stderr")
+            fout = open(hadoop_stdout_path, 'w')
+            ferr = open(hadoop_stderr_path, 'w')
+
+            logger.info("Generating a %s input file" % (sizeof_fmt(data_size)))
+            generate = HadoopJarJob('jars/hadoop-examples-1.2.1.jar',
                                "teragen %s %sinput" % (data_size, job_path))
-            hadoop_cluster.execute_jar(generate)
-            sort = HadoopJarJob('hadoop-examples-1.2.1.jar',
+            gen_out, gen_err = hadoop_cluster.execute_job(generate)
+            fout.write(gen_out)
+            ferr.write(gen_err)
+            
+            # Second Hadoop job: the actual benchmark
+            sort = HadoopJarJob('jars/hadoop-examples-1.2.1.jar',
                                "terasort -Dmapred.reduce.tasks=%s %sinput "
-                               "%soutput" % (self.options.n_reducer, job_path,
+                               "%soutput" % (self.options.n_reducers, job_path,
                                              job_path))
-            hadoop_cluster.execute_jar(sort)
+            sort_out, sort_err = hadoop_cluster.execute_job(sort)
+            fout.write(sort_out)
+            ferr.write(sort_err)
+            
+            fout.close()
+            ferr.close()
+            
+            # Terminate the scrappers and save their output
+            clients.kill()
+            for p in clients.processes:
+                f = open(os.path.join(self.result_dir, 'scrapper-' + p.host.address + '.out'))
+                f.write(p.stdout)
+                f.close()
+            
+            # Terminate everything else
+            listener.kill()
+            server.kill()
+            
+            # Get the logs back from the machines
+            self._get_logs(AD_node, hadoop_cluster)
 
         finally:
             if not self.options.keep_alive:
@@ -96,13 +130,13 @@ class ad_hadoop(Engine):
     def _start_active_data_clients(self, server, hadoop_cluster, port=1200,
                                    hdf_path='/root/hduser/terasort-input'):
         """Return a started client action"""
-        cmd = "java -cp active-data-lib-0.2.0.jar:active-data-hadoop-0.1-SNAPSHOT.jar " + \
+        cmd = "java -cp 'jars/*' " + \
             "org.inria.activedata.hadoop.HadoopScrapper " +\
-            server + "/tmp/hadoop/logs/hadoop-root-tasktracker-{{{host}}}.log"
+            server + " " + HADOOP_LOG_PATH + "hadoop-root-tasktracker-{{{host}}}.log"
         tasktracker = EX.Remote(cmd, hadoop_cluster.hosts)
-        cmd = "java -cp active-data-lib-0.2.0.jar:active-data-hadoop-0.1-SNAPSHOT.jar " + \
+        cmd = "java -cp 'jars/*' " + \
             "org.inria.activedata.hadoop.HadoopScrapper " +\
-            server + "/tmp/hadoop/logs/hadoop-root-jobtracker-{{{host}}}.log"
+            server + " " + HADOOP_LOG_PATH + "hadoop-root-jobtracker-{{{host}}}.log"
         jobtracker = EX.Remote(cmd, [hadoop_cluster.master])
 
         clients = EX.ParallelActions([tasktracker, jobtracker])
@@ -113,8 +147,8 @@ class ad_hadoop(Engine):
     def _start_active_data_listener(self, ad_server, port=1200,
                                    hdf_path='/root/hduser/terasort-input'):
         """Return a started listener process"""
-        cmd = "java -jar %s org.inria.activedata.hadoop.HadoopListener %s %s %s" \
-                % (JAR_NAME, ad_server, port, hdf_path)
+        cmd = "java -cp 'jars/*' org.inria.activedata.hadoop.HadoopListener %s %s %s" \
+                % (ad_server, port, hdf_path)
         out_path = os.path.join(self.result_dir, "listener.out")
         listener = EX.SshProcess(cmd, ad_server)
         listener.stdout_handlers.append(out_path)
@@ -125,7 +159,7 @@ class ad_hadoop(Engine):
     def _start_active_data_server(self, ad_server):
         """Return a started server process"""
         out_path = os.path.join(self.result_dir, "server.out")
-        cmd = "java -Djava.security.policy=server.policy -jar %s" % JAR_NAME
+        cmd = "java -Djava.security.policy=server.policy -jar jars/%s" % AD_JAR_NAME
         logger.info("Running command " + cmd)
         server = EX.SshProcess(cmd, ad_server)
         server.stdout_handlers.append(out_path)
@@ -143,16 +177,16 @@ class ad_hadoop(Engine):
 
     def setup_hosts(self, hosts):
         """Deploy operating setup active data on the service node and
-        Hadoop on all """
+        Hadoop on all"""
         logger.info('Deploying hosts')
         deployed_hosts, _ = EX5.deploy(EX5.Deployment(hosts=hosts,
                                           env_name="wheezy-x64-prod"))
-        # Common operations
-        EX.Put(hosts, [JAR_NAME, 'active-data-hadoop-0.1-SNAPSHOT.jar']).run()
+        # Copy the jars required by Active Data
+        EX.Put(hosts, [XP_BASEDIR + '/jars']).run()
 
         # Active Data server
         AD_node = filter(lambda x: self.options.ad_cluster in x, deployed_hosts)[0]
-        EX.Put([AD_node], ['server.policy']).run()
+        EX.Put([AD_node], [XP_BASEDIR + '/server.policy']).run()
 
         # Hadoop Cluster
         deployed_hosts.remove(AD_node)
@@ -169,7 +203,8 @@ class ad_hadoop(Engine):
         return AD_node, cluster
 
     def get_hosts(self):
-        """ """
+        """Returns the hosts from an existing reservation if provided, or from
+        a new reservation"""
         logger.info('Retrieving hosts list')
         self.site = get_cluster_site(self.options.ad_cluster)
         self.job_id = self.options.job_id if self.options.job_id\
@@ -178,7 +213,7 @@ class ad_hadoop(Engine):
         return EX5.get_oar_job_nodes(self.job_id, self.site)
 
     def _make_reservation(self, site):
-        """ """
+        """Make a new reservation"""
         elements = {self.options.ad_cluster: 1,
                     self.options.work_cluster: self.options.n_nodes}
         logger.info('Finding slot for the experiment '
@@ -187,11 +222,12 @@ class ad_hadoop(Engine):
                     style.emph(self.options.work_cluster).rjust(5),
                     style.emph(self.options.n_nodes))
         planning = funk.get_planning(elements)
-        slots = funk.compute_slots(planning, walltime=self.options.walltime)
+        slots = funk.compute_slots(planning, walltime=self.options.walltime, excluded_elements=EXCLUDED_ELEMENTS)
         slot = funk.find_free_slot(slots, elements)
         startdate = slot[0]
-        resources = funk.distribute_hosts(slot[2], elements)
-        jobs_specs = funk.get_jobs_specs(resources, name=job_name)
+        resources = funk.distribute_hosts(slot[2], elements, excluded_elements=EXCLUDED_ELEMENTS)
+        jobs_specs = funk.get_jobs_specs(resources, name=job_name, excluded_elements=EXCLUDED_ELEMENTS)
+        print jobs_specs
         sub, site = jobs_specs[0]
         sub.additional_options = "-t deploy"
         sub.reservation_date = startdate
@@ -201,27 +237,16 @@ class ad_hadoop(Engine):
                 style.log_header(EX.time_utils.format_date(startdate)))
         return job_id
 
-
-
-#            
-#            # Getting log files
-#            #distant_path = OUT_FILE_FORMAT.format(len(cores), comb['n_transitions'])
-#            #local_path = distant_path
-#            
-#            #EX.Get([server], distant_path).run()
-#            
-#            #EX.Local('mv ' + distant_path + ' ' + os.path.join(self.result_dir, local_path)).run()
-#            
-#            #EX.Get([server], 'client_*.out', local_location = self.result_dir)
-#            #EX.Remote('rm -f client_*.out', [server])
-#
-#            self._log("Finishing experiment with {0} clients and {1} transitions per client".format(comb['n_clients'], comb['n_transitions']))
-#
-#            sweeper.done(comb)
-#
-#        sub_comb = sweeper.get_next(filtr=lambda r: filter(lambda s: s["n_clients"] == comb['n_clients'], r))
-#        self._updateStat(sweeper.stats())
-
+        def _get_logs(self, AD_node, hadoop_cluster):
+            # Output from the jobtracker
+            EX.Get([hadoop_cluster.master], HADOOP_LOG_PATH +
+                   "hadoop-root-jobtracker-{{{host}}}.log",
+                   local_location=self.result_dir).run()
+            
+            # Output from the tasktrackers
+            EX.Get([hadoop_cluster.hosts], HADOOP_LOG_PATH +
+                   "hadoop-root-tasktracker-{{{host}}}.log",
+                   local_location=self.result_dir).run()
 
 def sizeof_fmt(num, suffix='B'):
     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:

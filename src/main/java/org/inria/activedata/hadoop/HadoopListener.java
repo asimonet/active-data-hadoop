@@ -60,7 +60,11 @@ public class HadoopListener {
 		// Now loop
 		while(true) {
 			lc = ActiveDataClient.getInstance().getLifeCycle("Hadoop", filePath);
-			printState(lc);
+			
+			if(lc != null)
+				printState(lc);
+			else
+				System.err.println("No life cycle for " + filePath);
 			try {
 				Thread.sleep(5000);
 			} catch(InterruptedException e) {
