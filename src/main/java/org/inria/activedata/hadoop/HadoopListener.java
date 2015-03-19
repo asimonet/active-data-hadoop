@@ -25,7 +25,7 @@ public class HadoopListener {
 		"Map output sent",
 		"Reduce submitted",
 		"Reduce received",
-		"Reduce started"
+		"Reduce started",
 	};
 
 	/**
@@ -36,6 +36,7 @@ public class HadoopListener {
 		for(String place: places) {
 			System.out.println(String.format("%s\t\t%d", place, lc.getTokens("Hadoop." + place).size()));
 		}
+		System.out.println("----------------------------------------");
 	}
 
 	private static void usage() {
@@ -55,18 +56,19 @@ public class HadoopListener {
 		// Connect to the Active Data Service
 		ActiveDataClientDriver driver = new RMIDriver(adHost, adPort);
 		ActiveDataClient.init(driver);
+		driver.connect();
+		final ActiveDataClient ad = ActiveDataClient.getInstance();
+		
 		LifeCycle lc = null;
 
 		// Now loop
 		while(true) {
-			lc = ActiveDataClient.getInstance().getLifeCycle("Hadoop", filePath);
+			lc = ad.getLifeCycle("HDFS", filePath);
 			
 			if(lc != null)
 				printState(lc);
-			else
-				System.err.println("No life cycle for " + filePath);
 			try {
-				Thread.sleep(5000);
+				Thread.sleep(1000);
 			} catch(InterruptedException e) {
 				// Ignore
 			}

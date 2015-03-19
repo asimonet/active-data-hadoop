@@ -13,26 +13,18 @@ public class HadoopLogParser {
 	private static final String HOSTNAME_TEMPLATE = "[\\w\\-\\.]+";
 
 	private static final String JOB_SUBMITTED_TEMPLATE = "Job job_(\\w+) added successfully for user '(\\w+)' to queue '(\\w+)'" ;
-	private static final String JOB_STARTED_TEMPLATE = String.format("IP=%s	OPERATION=SUBMIT_JOB	TARGET=job_(\\w+)	RESULT=SUCCESS",
-			IP_TEMPLATE);
+	private static final String JOB_STARTED_TEMPLATE = "OPERATION=SUBMIT_JOB\\s+TARGET=job_(\\w+)\\s+RESULT=SUCCESS";
 	private static final String JOB_ENDED_TEMPLATE = "Job job_(\\w+) has completed successfully";
 	private static final String STARTUP_IP_TEMPLATE = String.format("STARTUP_MSG:   host = (%s)/(%s)", HOSTNAME_TEMPLATE, IP_TEMPLATE);
-	private static final String TASK_SUBMITTED_TEMPLATE = String.format("Adding task \\((MAP|REDUCE)\\) 'attempt_(\\w+)' to tip task_(\\w+), for tracker '([%s]):([%s])/(%s):55578'",
-			HOSTNAME_TEMPLATE,
-			HOSTNAME_TEMPLATE,
-			IP_TEMPLATE);
-	private static final String TASK_RECEIVED_TEMPLATE = "LaunchTaskAction (registerTask): (\\w+) task's state:UNASSIGNED";
-	private static final String TASK_STARTED_TEMPLATE = "JVM with ID: (\\w+) given task: (\\w+)";
-	//private static final String TASK_DONE_TEMPLATE = "Task (\\w+) is done.";
-	private static final String TASK_DONE_TEMPLATE = "Removing task '(\\w+)'";
-	private static final String TRANSFER_DONE_TEMPLATE = String.format("clienttrace: src: (%s):(\\d+), dest: (%s):(\\d+), bytes: (\\d+), op: MAPRED_SHUFFLE, cliID: (\\w+), duration: (\\d+)",
+	private static final String TASK_SUBMITTED_TEMPLATE = "Adding task \\(\\w+\\) 'attempt_(\\w+)' to tip task_\\w+, for tracker";
+	private static final String TASK_RECEIVED_TEMPLATE = "LaunchTaskAction \\(registerTask\\): attempt_(\\w+) task's state:UNASSIGNED";
+	private static final String TASK_STARTED_TEMPLATE = "JVM with ID: (jvm_.*) given task: attempt_(\\w+)";
+	private static final String TASK_DONE_TEMPLATE = "Removing task 'attempt_(\\w+)'";
+	private static final String TRANSFER_DONE_TEMPLATE = String.format("clienttrace: src: .*, dest: .*, bytes: \\d+, op: MAPRED_SHUFFLE, cliID: attempt_(\\w+), duration: \\d+",
 			IP_TEMPLATE,
 			IP_TEMPLATE);
 	
-	private static final String TASK_ID_TEMPLATE = "attempt_(\\d{12})_(\\d{4})_(m|r)_(\\d{6})_(\\d+)";
-	
-	
-	private static final String GET_JOB_STATUS_COMMAND = "/tmp/hadoop/bin/hadoop job -status job_(%s)";
+	private static final String TASK_ID_TEMPLATE = "(\\d{12})_(\\d{4})_(m|r)_(\\w+)";
 	
 	private String myIp;
 	private String myHost;
@@ -106,14 +98,14 @@ public class HadoopLogParser {
 		// Task submitted
 		m = taskSubmittedPattern.matcher(line);
 		if(m.find()) {
-			output.taskId = m.group(2);
+			output.taskId = m.group(1);
 			output.taskSubId = parseTaskSubId(output.taskId);
 			output.jobId = parseJobId(output.taskId);
 			
 			// entryType defaults to "NONE"
-			if(m.group(1).equals("MAP"))
+			if(parseTaskType(output.taskId) == TaskType.MAP)
 				output.entryType = EntryType.MAP_SUBMITTED;
-			else if(m.group(1).equals("REDUCE"))
+			else
 				output.entryType = EntryType.REDUCE_SUBMITTED;
 		}
 		
@@ -165,7 +157,7 @@ public class HadoopLogParser {
 		// Transfer done
 		m = transferDonePattern.matcher(line);
 		if(m.find()) {
-			output.taskId = m.group(6);
+			output.taskId = m.group(1);
 			output.taskSubId = parseTaskSubId(output.taskId);
 			output.jobId = parseJobId(output.taskId);
 			
