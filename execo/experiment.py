@@ -36,7 +36,10 @@ default_walltime        = "3:00:00"
 XP_BASEDIR = '/home/ansimonet/active_data_hadoop'
 AD_JAR_NAME = 'active-data-lib-0.2.0.jar'
 HADOOP_LOG_PATH = '/tmp/hadoop/logs/'
+AD_RESULT_PATH = '/tmp/transitions_per_second.log'
 
+HADOOP_OPTIONS = '-Ddfs.namenode.handler.count=40 -Ddfs.datanode.handler.count=10'
+ 
 class ad_hadoop(Engine):
 
     def __init__(self):
@@ -95,7 +98,8 @@ class ad_hadoop(Engine):
             data_size = data_size_bytes / 100
             
             # Use a mapper per core
-            n_mappers = int(EX5.get_host_attributes(self.options.work_cluster + '-1')['architecture']['smt_size']) * self.options.n_nodes
+            n_cpu_per_node = EX5.get_host_attributes(self.options.work_cluster + '-1')['architecture']['smt_size']
+            n_mappers = int(n_cpu_per_node) * self.options.n_nodes
             logger.info("The experiment will use %s mappers and %s reducers",
                         style.emph(n_mappers),
                         style.emph(self.options.n_reducers))
@@ -108,7 +112,7 @@ class ad_hadoop(Engine):
             
             logger.info("Generating a %s input file" % (sizeof_fmt(data_size_bytes)))
             generate = HadoopJarJob('jars/hadoop-examples-1.2.1.jar',
-                               "teragen -Dmapred.map.tasks=%d %s %sinput" % (n_mappers, data_size, job_path))
+                               "teragen -Dmapred.map.tasks=%d -Dmapred.tasktracker.map.tasks.maximum=%s %s %s %sinput" % (n_mappers, n_cpu_per_node, HADOOP_OPTIONS, data_size, job_path))
             gen_out, gen_err = hadoop_cluster.execute_job(generate)
             fout.write(gen_out)
             ferr.write(gen_err)
@@ -120,10 +124,15 @@ class ad_hadoop(Engine):
             create_lc.start()
             create_lc.wait()
             
+            logger.info(create_lc.stdout)
+            if not create_lc.ok:
+                logger.error(create_lc.stderr)
+                exit(1)
+            
             # Start the second Hadoop job on a separate thread: the actual benchmark
             sort = HadoopJarJob('jars/hadoop-examples-1.2.1.jar',
-                               "terasort -Dmapred.reduce.tasks=%d -Dmapred.map.tasks=%d %sinput "
-                               "%soutput" % (self.options.n_reducers, n_mappers, job_path,
+                               "terasort -Dmapred.reduce.tasks=%d -Dmapred.map.tasks=%d -Dmapred.tasktracker.map.tasks.maximum=%s -Dmapred.tasktracker.reduce.tasks.maximum=%s %s %sinput "
+                               "%soutput" % (self.options.n_reducers, n_mappers, n_cpu_per_node, n_cpu_per_node, HADOOP_OPTIONS, job_path,
                                              job_path))
             
             def run_sort(sort, fout, ferr):
@@ -142,49 +151,42 @@ class ad_hadoop(Engine):
             cmd = "java -cp \"jars/*\" org.inria.activedata.examples.cmdline.PublishTransition %s -m \
                 org.inria.activedata.hadoop.model.HDFSModel -t 'HDFS.create Hadoop job' -sid HDFS \
                 -uid %sinput -newId %s" \
-                % (AD_node, job_path, sort.job_id)
+                % (AD_node, job_path, sort.job_id[4:])
             compose = EX.Process(cmd)
             compose.start()
             compose.wait()
             
+            logger.info(compose.stdout)
             if(not compose.ok):
-                logger.error(compose.stdout)
                 logger.error(compose.stderr)
                 exit(1)
                 
             # Start the scrappers, tell them to pay attention only to the sort job
-            clients = self._start_active_data_clients(AD_node, hadoop_cluster, only=sort.job_id)
+            clients = self._start_active_data_clients(AD_node, hadoop_cluster, only=sort.job_id[4:])
                 
             # Wait for the sort job to complete
             sort_thread.join()
             
             # Leave a few seconds for all the scrapers to do their job
-            sleep(10)
+            sleep(600)
             
             fout.close()
             ferr.close()
             
-            # Terminate the scrappers and save their output
+            # Terminate everything
             clients.kill()
-            for p in clients.processes:
-                f = open(os.path.join(self.result_dir, 'scrapper-' + p.host.address + '.stdout'), 'a')
-                f.write("----------------------------------------")
-                f.write(p.stdout)
-                f.close()
-
-                f = open(os.path.join(self.result_dir, 'scrapper-' + p.host.address + '.stderr'), 'a')
-                f.write("----------------------------------------")
-                f.write(p.stderr)
-                f.close()
-            
-            # Terminate everything else
             listener.kill()
-            server.kill()
+            
+            # Kindly ask the service to quit
+            EX.Process('java -cp "jars/*" org.inria.activedata.examples.cmdline.EndExperiment ' \
+                    + server.host.address\
+                    + ' ' + AD_RESULT_PATH).run()
             
             # Get the logs back from the machines
-            self._get_logs(hadoop_cluster)
+            self._get_logs(hadoop_cluster, server.host)
 
         finally:
+            hadoop_cluster.stop()
             if not self.options.keep_alive:
                 EX5.oardel([(self.job_id, self.site)])
                 
@@ -197,7 +199,7 @@ class ad_hadoop(Engine):
         if only != "":
             only = "-o " + only
 
-        cmd = "java -cp 'jars/*' " + \
+        cmd = "java -cp 'jars/*' -Dlog4j.configurationFile=log4j2.xml " + \
             "org.inria.activedata.hadoop.HadoopScrapper " +\
             server + " " + HADOOP_LOG_PATH + "hadoop-root-tasktracker-{{{host}}}.log " + only
         tasktracker = EX.Remote(cmd, hadoop_cluster.hosts)
@@ -205,7 +207,7 @@ class ad_hadoop(Engine):
         # Don't print a warning when the jobs are killed
         for p in tasktracker.processes:
             p.nolog_exit_code = p.ignore_exit_code = True
-        cmd = "java -cp 'jars/*' " + \
+        cmd = "java -cp 'jars/*' -Dlog4j.configurationFile=log4j2.xml " + \
             "org.inria.activedata.hadoop.HadoopScrapper " +\
             server + " " + HADOOP_LOG_PATH + "hadoop-root-jobtracker-{{{host}}}.log " + only
         jobtracker = EX.Remote(cmd, [hadoop_cluster.master])
@@ -213,6 +215,20 @@ class ad_hadoop(Engine):
             p.nolog_exit_code = p.ignore_exit_code = True
 
         clients = EX.ParallelActions([tasktracker, jobtracker])
+        
+        # Setup output handlers
+        for p in clients.processes:
+            # Treat the jobtracker scraper differently
+            if "jobtracker" in p.remote_cmd:
+                stdout = os.path.join(self.result_dir, 'scrapper-jobtracker.stdout')
+                stderr = os.path.join(self.result_dir, 'scrapper-jobtracker.stderr')
+            else:
+                stdout = os.path.join(self.result_dir, 'scrapper-' + p.host.address + '.stdout')
+                stderr = os.path.join(self.result_dir, 'scrapper-' + p.host.address + '.stderr')
+
+            p.stdout_handlers.append(stdout)
+            p.stderr_handlers.append(stderr)
+        
         clients.start()
 
         return clients
@@ -222,10 +238,10 @@ class ad_hadoop(Engine):
         """Return a started listener process"""
         cmd = "java -cp 'jars/*' org.inria.activedata.hadoop.HadoopListener %s %s %s" \
                 % (ad_server, port, hdf_path)
-        out_path = os.path.join(self.result_dir, "listener.out")
+        out_path = os.path.join(self.result_dir, "listener")
         listener = EX.SshProcess(cmd, ad_server)
-        listener.stdout_handlers.append(out_path)
-        listener.stderr_handlers.append(out_path)
+        listener.stdout_handlers.append(out_path + ".stdout")
+        listener.stderr_handlers.append(out_path + ".stderr")
         listener.nolog_exit_code = listener.ignore_exit_code = True
         listener.start()
         return listener
@@ -234,7 +250,9 @@ class ad_hadoop(Engine):
         """Return a started server process"""
         stdout_path = os.path.join(self.result_dir, "server.stdout")
         stderr_path = os.path.join(self.result_dir, "server.stderr")
-        cmd = "java -Djava.security.policy=server.policy -cp \"jars/*\" org.inria.activedata.examples.cmdline.RunService -vv"
+        options = "-Djava.security.policy=server.policy " \
+            + "-server -Xms1G -Xmx10G"
+        cmd = "java " + options + " -cp \"jars/*\" org.inria.activedata.examples.cmdline.RunService -vv"
         logger.info("Running command " + cmd)
         server = EX.SshProcess(cmd, ad_server)
         server.stdout_handlers.append(stdout_path)
@@ -262,7 +280,8 @@ class ad_hadoop(Engine):
 
         # Active Data server
         AD_node = filter(lambda x: self.options.ad_cluster in x, deployed_hosts)[0]
-        EX.Put([AD_node], [XP_BASEDIR + '/server.policy']).run()
+        EX.Put(hosts, [XP_BASEDIR + '/server.policy']).run()
+        EX.Put(hosts, [XP_BASEDIR + '/log4j2.xml']).run()
 
         # Hadoop Cluster
         deployed_hosts.remove(AD_node)
@@ -275,7 +294,7 @@ class ad_hadoop(Engine):
         cluster.bootstrap('hadoop-1.2.1.tar.gz')
         cluster.initialize()
         cluster.start()
-
+        
         return AD_node, cluster
 
     def get_hosts(self):
@@ -315,13 +334,14 @@ class ad_hadoop(Engine):
         sub, site = jobs_specs[0]
         sub.additional_options = "-t deploy"
         sub.reservation_date = startdate
+        sub.walltime = self.options.walltime
         jobs = EX5.oarsub([(sub, site)])
         job_id = jobs[0][0]
         logger.info('Job %s will start at %s', style.emph(job_id),
                 style.log_header(EX.time_utils.format_date(startdate)))
         return job_id
 
-    def _get_logs(self, hadoop_cluster):
+    def _get_logs(self, hadoop_cluster, service_host):
         # Output from the jobtracker
         EX.Get([hadoop_cluster.master], [HADOOP_LOG_PATH +
                "hadoop-root-jobtracker-{{{host}}}.log"],
@@ -332,6 +352,10 @@ class ad_hadoop(Engine):
         EX.Get(hadoop_cluster.hosts, [HADOOP_LOG_PATH +
                "hadoop-root-tasktracker-{{{host}}}.log"],
                local_location=self.result_dir).run()
+        
+        # The actual measure, on the service
+        EX.Get([service_host], [AD_RESULT_PATH], local_location=self.result_dir).run()
+        EX.Remote('rm -f ' + AD_RESULT_PATH, [service_host]).run() # We don't want to interfere with the next experiment
 
 def sizeof_fmt(num, suffix='B'):
     for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
