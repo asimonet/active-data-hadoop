@@ -1,0 +1,162 @@
+2015-02-18 16:39:19,333 INFO org.apache.hadoop.mapred.TaskTracker: STARTUP_MSG: 
+/************************************************************
+STARTUP_MSG: Starting TaskTracker
+STARTUP_MSG:   host = paranoia-5.rennes.grid5000.fr/172.16.100.5
+STARTUP_MSG:   args = []
+STARTUP_MSG:   version = 1.2.1
+STARTUP_MSG:   build = https://svn.apache.org/repos/asf/hadoop/common/branches/branch-1.2 -r 1503152; compiled by 'mattf' on Mon Jul 22 15:23:09 PDT 2013
+STARTUP_MSG:   java = 1.7.0_65
+************************************************************/
+2015-02-18 16:39:19,490 INFO org.apache.hadoop.metrics2.impl.MetricsConfig: loaded properties from hadoop-metrics2.properties
+2015-02-18 16:39:19,550 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source MetricsSystem,sub=Stats registered.
+2015-02-18 16:39:19,551 INFO org.apache.hadoop.metrics2.impl.MetricsSystemImpl: Scheduled snapshot period at 10 second(s).
+2015-02-18 16:39:19,551 INFO org.apache.hadoop.metrics2.impl.MetricsSystemImpl: TaskTracker metrics system started
+2015-02-18 16:39:19,581 INFO org.apache.hadoop.util.NativeCodeLoader: Loaded the native-hadoop library
+2015-02-18 16:39:19,665 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source ugi registered.
+2015-02-18 16:39:19,669 WARN org.apache.hadoop.metrics2.impl.MetricsSystemImpl: Source name ugi already exists!
+2015-02-18 16:39:19,816 INFO org.mortbay.log: Logging to org.slf4j.impl.Log4jLoggerAdapter(org.mortbay.log) via org.mortbay.log.Slf4jLog
+2015-02-18 16:39:19,859 INFO org.apache.hadoop.http.HttpServer: Added global filtersafety (class=org.apache.hadoop.http.HttpServer$QuotingInputFilter)
+2015-02-18 16:39:19,879 INFO org.apache.hadoop.mapred.TaskLogsTruncater: Initializing logs' truncater with mapRetainSize=-1 and reduceRetainSize=-1
+2015-02-18 16:39:19,882 INFO org.apache.hadoop.mapred.TaskTracker: Starting tasktracker with owner as root
+2015-02-18 16:39:19,882 INFO org.apache.hadoop.mapred.TaskTracker: Good mapred local directories are: /tmp/hadoop/tmp/mapred/local
+2015-02-18 16:39:19,890 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source jvm registered.
+2015-02-18 16:39:19,891 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source TaskTrackerMetrics registered.
+2015-02-18 16:39:19,901 INFO org.apache.hadoop.ipc.Server: Starting SocketReader
+2015-02-18 16:39:19,903 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source RpcDetailedActivityForPort55578 registered.
+2015-02-18 16:39:19,903 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source RpcActivityForPort55578 registered.
+2015-02-18 16:39:19,904 INFO org.apache.hadoop.ipc.Server: IPC Server Responder: starting
+2015-02-18 16:39:19,904 INFO org.apache.hadoop.ipc.Server: IPC Server listener on 55578: starting
+2015-02-18 16:39:19,905 INFO org.apache.hadoop.ipc.Server: IPC Server handler 0 on 55578: starting
+2015-02-18 16:39:19,905 INFO org.apache.hadoop.ipc.Server: IPC Server handler 1 on 55578: starting
+2015-02-18 16:39:19,905 INFO org.apache.hadoop.ipc.Server: IPC Server handler 2 on 55578: starting
+2015-02-18 16:39:19,905 INFO org.apache.hadoop.ipc.Server: IPC Server handler 3 on 55578: starting
+2015-02-18 16:39:19,905 INFO org.apache.hadoop.ipc.Server: IPC Server handler 4 on 55578: starting
+2015-02-18 16:39:19,905 INFO org.apache.hadoop.ipc.Server: IPC Server handler 5 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 6 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 7 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 8 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 9 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 10 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 11 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 12 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 13 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 14 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 15 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 16 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 17 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 18 on 55578: starting
+2015-02-18 16:39:19,906 INFO org.apache.hadoop.ipc.Server: IPC Server handler 19 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 20 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 21 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 22 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 23 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 24 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 25 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 26 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 27 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 28 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 29 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 30 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 31 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 32 on 55578: starting
+2015-02-18 16:39:19,907 INFO org.apache.hadoop.ipc.Server: IPC Server handler 33 on 55578: starting
+2015-02-18 16:39:19,908 INFO org.apache.hadoop.ipc.Server: IPC Server handler 34 on 55578: starting
+2015-02-18 16:39:19,908 INFO org.apache.hadoop.ipc.Server: IPC Server handler 35 on 55578: starting
+2015-02-18 16:39:19,908 INFO org.apache.hadoop.ipc.Server: IPC Server handler 36 on 55578: starting
+2015-02-18 16:39:19,908 INFO org.apache.hadoop.ipc.Server: IPC Server handler 37 on 55578: starting
+2015-02-18 16:39:19,908 INFO org.apache.hadoop.mapred.TaskTracker: TaskTracker up at: localhost/127.0.0.1:55578
+2015-02-18 16:39:19,908 INFO org.apache.hadoop.mapred.TaskTracker: Starting tracker tracker_paranoia-5.rennes.grid5000.fr:localhost/127.0.0.1:55578
+2015-02-18 16:39:19,961 INFO org.apache.hadoop.mapred.TaskTracker: Starting thread: Map-events fetcher for all reduce tasks on tracker_paranoia-5.rennes.grid5000.fr:localhost/127.0.0.1:55578
+2015-02-18 16:39:19,977 INFO org.apache.hadoop.util.ProcessTree: setsid exited with exit code 0
+2015-02-18 16:39:20,004 INFO org.apache.hadoop.mapred.TaskTracker:  Using ResourceCalculatorPlugin : org.apache.hadoop.util.LinuxResourceCalculatorPlugin@355d3d12
+2015-02-18 16:39:20,006 WARN org.apache.hadoop.mapred.TaskTracker: TaskTracker's totalMemoryAllottedForTasks is -1. TaskMemoryManager is disabled.
+2015-02-18 16:39:20,009 INFO org.apache.hadoop.mapred.IndexCache: IndexCache created with max memory = 10485760
+2015-02-18 16:39:20,014 INFO org.apache.hadoop.metrics2.impl.MetricsSourceAdapter: MBean for source ShuffleServerMetrics registered.
+2015-02-18 16:39:20,016 INFO org.apache.hadoop.http.HttpServer: Port returned by webServer.getConnectors()[0].getLocalPort() before open() is -1. Opening the listener on 50060
+2015-02-18 16:39:20,016 INFO org.apache.hadoop.http.HttpServer: listener.getLocalPort() returned 50060 webServer.getConnectors()[0].getLocalPort() returned 50060
+2015-02-18 16:39:20,016 INFO org.apache.hadoop.http.HttpServer: Jetty bound to port 50060
+2015-02-18 16:39:20,017 INFO org.mortbay.log: jetty-6.1.26
+2015-02-18 16:39:20,249 INFO org.mortbay.log: Started SelectChannelConnector@0.0.0.0:50060
+2015-02-18 16:39:20,249 INFO org.apache.hadoop.mapred.TaskTracker: FILE_CACHE_SIZE for mapOutputServlet set to : 2000
+2015-02-18 16:39:34,014 INFO org.apache.hadoop.mapred.TaskTracker: LaunchTaskAction (registerTask): attempt_201502181639_0001_m_000011_0 task's state:UNASSIGNED
+2015-02-18 16:39:34,016 INFO org.apache.hadoop.mapred.TaskTracker: Trying to launch : attempt_201502181639_0001_m_000011_0 which needs 1 slots
+2015-02-18 16:39:34,016 INFO org.apache.hadoop.mapred.TaskTracker: In TaskLauncher, current free slots : 19 and trying to launch attempt_201502181639_0001_m_000011_0 which needs 1 slots
+2015-02-18 16:39:34,305 INFO org.apache.hadoop.mapred.JobLocalizer: Initializing user root on this TT.
+2015-02-18 16:39:34,696 INFO org.apache.hadoop.mapred.JvmManager: In JvmRunner constructed JVM ID: jvm_201502181639_0001_m_1522722170
+2015-02-18 16:39:34,696 INFO org.apache.hadoop.mapred.JvmManager: JVM Runner jvm_201502181639_0001_m_1522722170 spawned.
+2015-02-18 16:39:34,698 INFO org.apache.hadoop.mapred.TaskController: Writing commands to /tmp/hadoop/tmp/mapred/local/ttprivate/taskTracker/root/jobcache/job_201502181639_0001/attempt_201502181639_0001_m_000011_0/taskjvm.sh
+2015-02-18 16:39:35,307 INFO org.apache.hadoop.mapred.TaskTracker: JVM with ID: jvm_201502181639_0001_m_1522722170 given task: attempt_201502181639_0001_m_000011_0
+2015-02-18 16:39:35,858 INFO org.apache.hadoop.mapred.TaskTracker: attempt_201502181639_0001_m_000011_0 0.0% setup
+2015-02-18 16:39:35,859 INFO org.apache.hadoop.mapred.TaskTracker: Task attempt_201502181639_0001_m_000011_0 is done.
+2015-02-18 16:39:35,860 INFO org.apache.hadoop.mapred.TaskTracker: reported output size for attempt_201502181639_0001_m_000011_0  was -1
+2015-02-18 16:39:35,860 INFO org.apache.hadoop.mapred.TaskTracker: addFreeSlot : current free slots : 19
+2015-02-18 16:39:36,046 INFO org.apache.hadoop.mapred.JvmManager: JVM : jvm_201502181639_0001_m_1522722170 exited with exit code 0. Number of tasks it ran: 1
+2015-02-18 16:39:36,081 INFO org.apache.hadoop.io.nativeio.NativeIO: Initialized cache for UID to User mapping with a cache timeout of 14400 seconds.
+2015-02-18 16:39:36,081 INFO org.apache.hadoop.io.nativeio.NativeIO: Got UserName root for UID 0 from the native implementation
+2015-02-18 16:39:36,145 INFO org.apache.hadoop.mapred.TaskTracker: LaunchTaskAction (registerTask): attempt_201502181639_0001_m_000000_0 task's state:UNASSIGNED
+2015-02-18 16:39:36,145 INFO org.apache.hadoop.mapred.TaskTracker: LaunchTaskAction (registerTask): attempt_201502181639_0001_m_000001_0 task's state:UNASSIGNED
+2015-02-18 16:39:36,145 INFO org.apache.hadoop.mapred.TaskTracker: LaunchTaskAction (registerTask): attempt_201502181639_0001_m_000002_0 task's state:UNASSIGNED
+2015-02-18 16:39:36,145 INFO org.apache.hadoop.mapred.TaskTracker: Trying to launch : attempt_201502181639_0001_m_000000_0 which needs 1 slots
+2015-02-18 16:39:36,146 INFO org.apache.hadoop.mapred.TaskTracker: In TaskLauncher, current free slots : 19 and trying to launch attempt_201502181639_0001_m_000000_0 which needs 1 slots
+2015-02-18 16:39:36,146 INFO org.apache.hadoop.mapred.TaskTracker: Trying to launch : attempt_201502181639_0001_m_000001_0 which needs 1 slots
+2015-02-18 16:39:36,146 INFO org.apache.hadoop.mapred.TaskTracker: In TaskLauncher, current free slots : 18 and trying to launch attempt_201502181639_0001_m_000001_0 which needs 1 slots
+2015-02-18 16:39:36,146 INFO org.apache.hadoop.mapred.TaskTracker: Trying to launch : attempt_201502181639_0001_m_000002_0 which needs 1 slots
+2015-02-18 16:39:36,146 INFO org.apache.hadoop.mapred.TaskTracker: In TaskLauncher, current free slots : 17 and trying to launch attempt_201502181639_0001_m_000002_0 which needs 1 slots
+2015-02-18 16:39:36,150 INFO org.apache.hadoop.mapred.JvmManager: In JvmRunner constructed JVM ID: jvm_201502181639_0001_m_424326962
+2015-02-18 16:39:36,150 INFO org.apache.hadoop.mapred.JvmManager: JVM Runner jvm_201502181639_0001_m_424326962 spawned.
+2015-02-18 16:39:36,150 INFO org.apache.hadoop.mapred.JvmManager: In JvmRunner constructed JVM ID: jvm_201502181639_0001_m_12164632
+2015-02-18 16:39:36,150 INFO org.apache.hadoop.mapred.JvmManager: JVM Runner jvm_201502181639_0001_m_12164632 spawned.
+2015-02-18 16:39:36,151 INFO org.apache.hadoop.mapred.JvmManager: In JvmRunner constructed JVM ID: jvm_201502181639_0001_m_-140494225
+2015-02-18 16:39:36,151 INFO org.apache.hadoop.mapred.JvmManager: JVM Runner jvm_201502181639_0001_m_-140494225 spawned.
+2015-02-18 16:39:36,151 INFO org.apache.hadoop.mapred.TaskController: Writing commands to /tmp/hadoop/tmp/mapred/local/ttprivate/taskTracker/root/jobcache/job_201502181639_0001/attempt_201502181639_0001_m_000000_0/taskjvm.sh
+2015-02-18 16:39:36,152 INFO org.apache.hadoop.mapred.TaskController: Writing commands to /tmp/hadoop/tmp/mapred/local/ttprivate/taskTracker/root/jobcache/job_201502181639_0001/attempt_201502181639_0001_m_000002_0/taskjvm.sh
+2015-02-18 16:39:36,152 INFO org.apache.hadoop.mapred.TaskController: Writing commands to /tmp/hadoop/tmp/mapred/local/ttprivate/taskTracker/root/jobcache/job_201502181639_0001/attempt_201502181639_0001_m_000001_0/taskjvm.sh
+2015-02-18 16:39:36,255 INFO org.apache.hadoop.mapred.TaskTracker: Received KillTaskAction for task: attempt_201502181639_0001_m_000011_0
+2015-02-18 16:39:36,255 INFO org.apache.hadoop.mapred.TaskTracker: About to purge task: attempt_201502181639_0001_m_000011_0
+2015-02-18 16:39:36,255 INFO org.apache.hadoop.mapred.IndexCache: Map ID attempt_201502181639_0001_m_000011_0 not found in cache
+2015-02-18 16:39:36,789 INFO org.apache.hadoop.mapred.TaskTracker: JVM with ID: jvm_201502181639_0001_m_12164632 given task: attempt_201502181639_0001_m_000002_0
+2015-02-18 16:39:36,790 INFO org.apache.hadoop.mapred.TaskTracker: JVM with ID: jvm_201502181639_0001_m_-140494225 given task: attempt_201502181639_0001_m_000001_0
+2015-02-18 16:39:36,792 INFO org.apache.hadoop.mapred.TaskTracker: JVM with ID: jvm_201502181639_0001_m_424326962 given task: attempt_201502181639_0001_m_000000_0
+2015-02-18 16:39:37,477 INFO org.apache.hadoop.mapred.TaskTracker: attempt_201502181639_0001_m_000001_0 1.0% hdfs://paranoia-4.rennes.grid5000.fr:54310/benchmarks/MRBench/mr_input/input_-103759205.txt:40+40
+2015-02-18 16:39:37,478 INFO org.apache.hadoop.mapred.TaskTracker: attempt_201502181639_0001_m_000000_0 1.0% hdfs://paranoia-4.rennes.grid5000.fr:54310/benchmarks/MRBench/mr_input/input_-103759205.txt:0+40
+2015-02-18 16:39:37,479 INFO org.apache.hadoop.mapred.TaskTracker: Task attempt_201502181639_0001_m_000001_0 is done.
+2015-02-18 16:39:37,479 INFO org.apache.hadoop.mapred.TaskTracker: reported output size for attempt_201502181639_0001_m_000001_0  was 102
+2015-02-18 16:39:37,479 INFO org.apache.hadoop.mapred.TaskTracker: addFreeSlot : current free slots : 17
+2015-02-18 16:39:37,480 INFO org.apache.hadoop.mapred.TaskTracker: Task attempt_201502181639_0001_m_000000_0 is done.
+2015-02-18 16:39:37,480 INFO org.apache.hadoop.mapred.TaskTracker: reported output size for attempt_201502181639_0001_m_000000_0  was 111
+2015-02-18 16:39:37,480 INFO org.apache.hadoop.mapred.TaskTracker: addFreeSlot : current free slots : 18
+2015-02-18 16:39:37,481 INFO org.apache.hadoop.mapred.TaskTracker: attempt_201502181639_0001_m_000002_0 1.0% hdfs://paranoia-4.rennes.grid5000.fr:54310/benchmarks/MRBench/mr_input/input_-103759205.txt:80+40
+2015-02-18 16:39:37,483 INFO org.apache.hadoop.mapred.TaskTracker: Task attempt_201502181639_0001_m_000002_0 is done.
+2015-02-18 16:39:37,483 INFO org.apache.hadoop.mapred.TaskTracker: reported output size for attempt_201502181639_0001_m_000002_0  was 102
+2015-02-18 16:39:37,483 INFO org.apache.hadoop.mapred.TaskTracker: addFreeSlot : current free slots : 19
+2015-02-18 16:39:37,654 INFO org.apache.hadoop.mapred.JvmManager: JVM : jvm_201502181639_0001_m_424326962 exited with exit code 0. Number of tasks it ran: 1
+2015-02-18 16:39:37,662 INFO org.apache.hadoop.mapred.JvmManager: JVM : jvm_201502181639_0001_m_-140494225 exited with exit code 0. Number of tasks it ran: 1
+2015-02-18 16:39:37,666 INFO org.apache.hadoop.mapred.JvmManager: JVM : jvm_201502181639_0001_m_12164632 exited with exit code 0. Number of tasks it ran: 1
+2015-02-18 16:39:37,678 INFO org.apache.hadoop.mapred.TaskTracker: LaunchTaskAction (registerTask): attempt_201502181639_0001_r_000000_0 task's state:UNASSIGNED
+2015-02-18 16:39:37,679 INFO org.apache.hadoop.mapred.TaskTracker: Trying to launch : attempt_201502181639_0001_r_000000_0 which needs 1 slots
+2015-02-18 16:39:37,679 INFO org.apache.hadoop.mapred.TaskTracker: In TaskLauncher, current free slots : 19 and trying to launch attempt_201502181639_0001_r_000000_0 which needs 1 slots
+2015-02-18 16:39:37,682 INFO org.apache.hadoop.mapred.JvmManager: In JvmRunner constructed JVM ID: jvm_201502181639_0001_r_1522722170
+2015-02-18 16:39:37,682 INFO org.apache.hadoop.mapred.JvmManager: JVM Runner jvm_201502181639_0001_r_1522722170 spawned.
+2015-02-18 16:39:37,684 INFO org.apache.hadoop.mapred.TaskController: Writing commands to /tmp/hadoop/tmp/mapred/local/ttprivate/taskTracker/root/jobcache/job_201502181639_0001/attempt_201502181639_0001_r_000000_0/taskjvm.sh
+2015-02-18 16:39:38,285 INFO org.apache.hadoop.mapred.TaskTracker: JVM with ID: jvm_201502181639_0001_r_1522722170 given task: attempt_201502181639_0001_r_000000_0
+2015-02-18 16:39:43,922 INFO org.apache.hadoop.mapred.TaskTracker.clienttrace: src: 172.16.100.5:50060, dest: 172.16.100.5:53189, bytes: 60, op: MAPRED_SHUFFLE, cliID: attempt_201502181639_0001_m_000000_0, duration: 11173974
+2015-02-18 16:39:43,922 INFO org.apache.hadoop.mapred.TaskTracker.clienttrace: src: 172.16.100.5:50060, dest: 172.16.100.4:38697, bytes: 51, op: MAPRED_SHUFFLE, cliID: attempt_201502181639_0001_m_000000_0, duration: 6224254
+2015-02-18 16:39:43,952 INFO org.apache.hadoop.mapred.TaskTracker.clienttrace: src: 172.16.100.5:50060, dest: 172.16.100.4:38697, bytes: 60, op: MAPRED_SHUFFLE, cliID: attempt_201502181639_0001_m_000001_0, duration: 960157
+2015-02-18 16:39:43,952 INFO org.apache.hadoop.mapred.TaskTracker.clienttrace: src: 172.16.100.5:50060, dest: 172.16.100.5:53189, bytes: 42, op: MAPRED_SHUFFLE, cliID: attempt_201502181639_0001_m_000001_0, duration: 1375668
+2015-02-18 16:39:43,955 INFO org.apache.hadoop.mapred.TaskTracker.clienttrace: src: 172.16.100.5:50060, dest: 172.16.100.4:38697, bytes: 42, op: MAPRED_SHUFFLE, cliID: attempt_201502181639_0001_m_000002_0, duration: 480433
+2015-02-18 16:39:43,955 INFO org.apache.hadoop.mapred.TaskTracker.clienttrace: src: 172.16.100.5:50060, dest: 172.16.100.5:53189, bytes: 60, op: MAPRED_SHUFFLE, cliID: attempt_201502181639_0001_m_000002_0, duration: 838318
+2015-02-18 16:39:44,754 INFO org.apache.hadoop.mapred.TaskTracker: attempt_201502181639_0001_r_000000_0 0.33333334% reduce > copy (10 of 10 at 0.00 MB/s)
+2015-02-18 16:39:44,812 INFO org.apache.hadoop.mapred.TaskTracker: attempt_201502181639_0001_r_000000_0 0.33333334% reduce > copy (10 of 10 at 0.00 MB/s)
+2015-02-18 16:39:44,969 INFO org.apache.hadoop.mapred.TaskTracker: attempt_201502181639_0001_r_000000_0 0.33333334% reduce > copy (10 of 10 at 0.00 MB/s)
+2015-02-18 16:39:45,079 INFO org.apache.hadoop.mapred.TaskTracker: Task attempt_201502181639_0001_r_000000_0 is in commit-pending, task state:COMMIT_PENDING
+2015-02-18 16:39:45,079 INFO org.apache.hadoop.mapred.TaskTracker: attempt_201502181639_0001_r_000000_0 0.33333334% reduce > copy (10 of 10 at 0.00 MB/s)
+2015-02-18 16:39:45,243 INFO org.apache.hadoop.mapred.TaskTracker: Received commit task action for attempt_201502181639_0001_r_000000_0
+2015-02-18 16:39:46,112 INFO org.apache.hadoop.mapred.TaskTracker: attempt_201502181639_0001_r_000000_0 1.0% reduce > reduce
+2015-02-18 16:39:46,113 INFO org.apache.hadoop.mapred.TaskTracker: Task attempt_201502181639_0001_r_000000_0 is done.
+2015-02-18 16:39:46,113 INFO org.apache.hadoop.mapred.TaskTracker: reported output size for attempt_201502181639_0001_r_000000_0  was -1
+2015-02-18 16:39:46,113 INFO org.apache.hadoop.mapred.TaskTracker: addFreeSlot : current free slots : 19
+2015-02-18 16:39:46,243 INFO org.apache.hadoop.mapred.JvmManager: JVM : jvm_201502181639_0001_r_1522722170 exited with exit code 0. Number of tasks it ran: 1
+2015-02-18 16:39:46,256 INFO org.apache.hadoop.mapred.TaskTracker: Received KillTaskAction for task: attempt_201502181639_0001_r_000000_0
+2015-02-18 16:39:46,256 INFO org.apache.hadoop.mapred.TaskTracker: About to purge task: attempt_201502181639_0001_r_000000_0
+2015-02-18 16:39:48,257 INFO org.apache.hadoop.mapred.TaskTracker: Received 'KillJobAction' for job: job_201502181639_0001
+2015-02-18 16:39:48,258 INFO org.apache.hadoop.mapred.UserLogCleaner: Adding job_201502181639_0001 for user-log deletion with retainTimeStamp:1424363988258
