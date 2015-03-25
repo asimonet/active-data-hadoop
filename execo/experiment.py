@@ -38,7 +38,12 @@ AD_JAR_NAME = 'active-data-lib-0.2.0.jar'
 HADOOP_LOG_PATH = '/tmp/hadoop/logs/'
 AD_RESULT_PATH = '/tmp/transitions_per_second.log'
 
-HADOOP_OPTIONS = '-Ddfs.namenode.handler.count=40 -Ddfs.datanode.handler.count=10'
+HADOOP_OPTIONS = '-Ddfs.namenode.handler.count=40 ' + \
+    '-Ddfs.datanode.handler.count=10' + \
+    '-Dmapreduce.map.output.compress=true ' + \
+    '-Dmapreduce.map.output.compress.codec=org.apache.hadoop.io.compress.GzipCodec ' + \
+    '-Dmapred.child.java.opts=\'-Xms%d\''
+    
  
 class ad_hadoop(Engine):
 
@@ -98,11 +103,16 @@ class ad_hadoop(Engine):
             data_size = data_size_bytes / 100
             
             # Use a mapper per core
-            n_cpu_per_node = EX5.get_host_attributes(self.options.work_cluster + '-1')['architecture']['smt_size']
+            attr = EX5.get_host_attributes(self.options.work_cluster + '-1')
+            n_cpu_per_node = attr['architecture']['smt_size']
+            mem_per_node = attr['main_memory']['ram_size']
+
             n_mappers = int(n_cpu_per_node) * self.options.n_nodes
+            mem_per_task = (int(mem_per_node) - 1000) / n_cpu_per_node # leave 1Gb out for the system
             logger.info("The experiment will use %s mappers and %s reducers",
                         style.emph(n_mappers),
                         style.emph(self.options.n_reducers))
+            logger.info("Using %s of memory for each task", style.emph(sizeof_fmt(mem_per_task)))
             
             # First Hadoop job to generate the dataset
             hadoop_stdout_path = os.path.join(self.result_dir, "hadoop.stdout")
@@ -112,7 +122,7 @@ class ad_hadoop(Engine):
             
             logger.info("Generating a %s input file" % (sizeof_fmt(data_size_bytes)))
             generate = HadoopJarJob('jars/hadoop-examples-1.2.1.jar',
-                               "teragen -Dmapred.map.tasks=%d -Dmapred.tasktracker.map.tasks.maximum=%s %s %s %sinput" % (n_mappers, n_cpu_per_node, HADOOP_OPTIONS, data_size, job_path))
+                               "teragen -Dmapred.map.tasks=%d -Dmapred.tasktracker.map.tasks.maximum=%s %s %s %sinput" % (n_mappers, n_cpu_per_node, HADOOP_OPTIONS % mem_per_node, data_size, job_path))
             gen_out, gen_err = hadoop_cluster.execute_job(generate)
             fout.write(gen_out)
             ferr.write(gen_err)
@@ -132,7 +142,7 @@ class ad_hadoop(Engine):
             # Start the second Hadoop job on a separate thread: the actual benchmark
             sort = HadoopJarJob('jars/hadoop-examples-1.2.1.jar',
                                "terasort -Dmapred.reduce.tasks=%d -Dmapred.map.tasks=%d -Dmapred.tasktracker.map.tasks.maximum=%s -Dmapred.tasktracker.reduce.tasks.maximum=%s %s %sinput "
-                               "%soutput" % (self.options.n_reducers, n_mappers, n_cpu_per_node, n_cpu_per_node, HADOOP_OPTIONS, job_path,
+                               "%soutput" % (self.options.n_reducers, n_mappers, n_cpu_per_node, n_cpu_per_node, HADOOP_OPTIONS % mem_per_node, job_path,
                                              job_path))
             
             def run_sort(sort, fout, ferr):
@@ -251,7 +261,7 @@ class ad_hadoop(Engine):
         stdout_path = os.path.join(self.result_dir, "server.stdout")
         stderr_path = os.path.join(self.result_dir, "server.stderr")
         options = "-Djava.security.policy=server.policy " \
-            + "-server -Xms1G -Xmx10G"
+            + "-server -Xmx1G -Xmx10G"
         cmd = "java " + options + " -cp \"jars/*\" org.inria.activedata.examples.cmdline.RunService -vv"
         logger.info("Running command " + cmd)
         server = EX.SshProcess(cmd, ad_server)
